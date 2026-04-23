@@ -20,14 +20,9 @@
  * THE SOFTWARE.
  */
 
-import { Notice } from "obsidian";
 import { MarkedExtension, Tokens } from "marked";
 import hljs from "highlight.js";
-import { MathRendererQueue } from "./math";
 import { Extension } from "./extension";
-import { UploadImageToWx } from "../imagelib";
-import AssetsManager from "src/assets";
-import { wxWidget } from "src/weixin-api";
 
 export class CardDataManager {
 	private cardData: Map<string, string>;
@@ -68,7 +63,6 @@ export class CardDataManager {
 }
 
 const MermaidSectionClassName = 'note-mermaid';
-const MermaidImgClassName = 'note-mermaid-img';
 
 export class CodeRenderer extends Extension {
 	showLineNumber: boolean;
@@ -76,37 +70,6 @@ export class CodeRenderer extends Extension {
 
 	async prepare() {
 		this.mermaidIndex = 0;
-	}
-
-	static srcToBlob(src: string) {
-		const base64 = src.split(',')[1];
-		const byteCharacters = atob(base64);
-		const byteNumbers = new Array(byteCharacters.length);
-		for (let i = 0; i < byteCharacters.length; i++) {
-			byteNumbers[i] = byteCharacters.charCodeAt(i);
-		}
-		const byteArray = new Uint8Array(byteNumbers);
-		return new Blob([byteArray], { type: 'image/png' });
-	}
-
-	static async uploadMermaidImages(root: HTMLElement, token: string) {
-		const imgs = root.querySelectorAll('.' + MermaidImgClassName);
-		for (let img of imgs) {
-			const src = img.getAttribute('src');
-			if (!src) continue;
-			if (src.startsWith('http')) continue;
-			const blob = CodeRenderer.srcToBlob(img.getAttribute('src')!);
-			const name = img.id + '.png';
-			const res = await UploadImageToWx(blob, name, token);
-			if (res.errcode != 0) {
-				const msg = `上传图片失败: ${res.errcode} ${res.errmsg}`;
-				new Notice(msg);
-				console.error(msg);
-				continue;
-			}
-			const url = res.url;
-			img.setAttribute('src', url);
-		}
 	}
 
 	replaceSpaces(text: string) {
@@ -186,29 +149,7 @@ export class CodeRenderer extends Extension {
 				+ '</pre></section>';
 		}
 
-		if (!this.settings.isAuthKeyVaild()) {
-			return html;
-		}
-
-		const settings = AssetsManager.getInstance().expertSettings;
-		const id = settings.render?.code;
-		if (id && typeof id === 'number') {
-			const params = JSON.stringify({
-				id: `${id}`,
-				content: html,
-			});
-			html = await wxWidget(this.settings.authKey, params);
-		}
 		return html;
-	}
-
-	static getMathType(lang: string | null) {
-		if (!lang) return null;
-		let l = lang.toLowerCase();
-		l = l.trim();
-		if (l === 'am' || l === 'asciimath') return 'asciimath';
-		if (l === 'latex' || l === 'tex') return 'latex';
-		return null;
 	}
 
 	parseCard(htmlString: string) {
@@ -257,16 +198,9 @@ export class CodeRenderer extends Extension {
 			async: true,
 			walkTokens: async (token: Tokens.Generic) => {
 				if (token.type !== 'code') return;
-				if (this.settings.isAuthKeyVaild()) {
-					const type = CodeRenderer.getMathType(token.lang ?? '');
-					if (type) {
-						token.html = await MathRendererQueue.getInstance().render(token, false, type);
-						return;
-					}
-					if (token.lang && token.lang.trim().toLocaleLowerCase() == 'mermaid') {
-						token.html = this.renderMermaid(token as Tokens.Code);
-						return;
-					}
+				if (token.lang && token.lang.trim().toLocaleLowerCase() == 'mermaid') {
+					token.html = this.renderMermaid(token as Tokens.Code);
+					return;
 				}
 				if (token.lang && token.lang.trim().toLocaleLowerCase() == 'mpcard') {
 					token.html = this.renderCard(token as Tokens.Code);
@@ -284,4 +218,3 @@ export class CodeRenderer extends Extension {
 		}
 	}
 }
-

@@ -24,7 +24,6 @@ import { Tokens, MarkedExtension } from "marked";
 import { Extension } from "./extension";
 import AssetsManager from "src/assets";
 import { ExpertSettings } from "src/expert-settings";
-import { wxWidget } from "src/weixin-api";
 
 export class HeadingRenderer extends Extension {
   index = [0, 0, 0, 0];
@@ -54,44 +53,6 @@ export class HeadingRenderer extends Extension {
     return template.replace('{content}', content);
   }
 
-  async renderWithWidgetId(token: Tokens.Heading, widgetId: number) {
-    const authkey = this.settings.authKey;
-    const content = await this.marked.parseInline(token.text);
-    const params = JSON.stringify({
-      id: `${widgetId}`,
-      title: content,
-    });
-    return await wxWidget(authkey, params);
-  }
-
-  async renderWithWidget(token: Tokens.Heading, widgetId: number, counter: boolean|undefined, len: number|undefined, style: object|undefined = undefined) {
-    const authkey = this.settings.authKey;
-    let title = token.text;
-    if (counter === undefined) {
-      counter = false;
-    }
-    if (len === undefined) {
-      len = 1;
-    }
-    if (style === undefined) {
-      style = new Map<string, string>();
-    }
-    if (counter) {
-      title = `${this.index[token.depth]}`;
-      if (title.length < len) {
-        title = title.padStart(len, '0');
-      }
-    }
-    const content = await this.marked.parseInline(token.text);
-    const params = JSON.stringify({
-      id: `${widgetId}`,
-      title,
-      style,
-      content: '<p>' + content + '</p>',
-    });
-    return await wxWidget(authkey, params);
-  }
-
   markedExtension(): MarkedExtension {
     return {
       async: true,
@@ -105,13 +66,6 @@ export class HeadingRenderer extends Extension {
         if (setting) {
           if (typeof setting === 'string') {
             token.html = await this.renderWithTemplate(token as Tokens.Heading, setting);
-          }
-          else if (typeof setting === 'number') {
-            token.html = await this.renderWithWidgetId(token as Tokens.Heading, setting);
-          }
-          else {
-            const { id, counter, len, style } = setting;
-            token.html = await this.renderWithWidget(token as Tokens.Heading, id, counter, len, style);
           }
           return;
         }

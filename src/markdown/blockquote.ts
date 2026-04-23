@@ -26,37 +26,27 @@ import { NMPSettings } from "src/settings";
 import { App, Vault } from "obsidian";
 import AssetsManager from "../assets";
 import { CalloutRenderer } from "./callouts";
-import { WidgetBox } from "./widget-box";
 
 export class Blockquote extends Extension {
   callout: CalloutRenderer;
-  box: WidgetBox;
 
   constructor(app: App, settings: NMPSettings, assetsManager: AssetsManager, callback: MDRendererCallback) {
     super(app, settings, assetsManager, callback);
     this.callout = new CalloutRenderer(app, settings, assetsManager, callback);
-    if (settings.isAuthKeyVaild()) {
-      this.box = new WidgetBox(app, settings, assetsManager, callback);
-    }
   }
 
-  async prepare() { 
+  async prepare() {
     if (!this.marked) {
       console.error("marked is not ready");
       return;
     }
     if (this.callout) this.callout.marked = this.marked;
-    if (this.box) this.box.marked = this.marked;
     return;
   }
 
   async renderer(token: Tokens.Blockquote) {
     if (this.callout.matched(token.text)) {
       return await this.callout.renderer(token);
-    }
-
-    if (this.box && this.box.matched(token.text)) {
-      return await this.box.renderer(token);
     }
 
     const body = await this.marked.parse(token.text);

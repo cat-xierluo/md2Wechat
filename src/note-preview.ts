@@ -20,13 +20,10 @@
  * THE SOFTWARE.
  */
 
-import { EventRef, ItemView, Workspace, WorkspaceLeaf, Notice, Platform, TFile, TFolder, TAbstractFile, Plugin } from 'obsidian';
-import { uevent, debounce, waitForLayoutReady } from './utils';
+import { EventRef, ItemView, Workspace, WorkspaceLeaf, Notice, Platform, TFile, Plugin } from 'obsidian';
+import { uevent, waitForLayoutReady } from './utils';
 import { NMPSettings } from './settings';
 import AssetsManager from './assets';
-import { MarkedParser } from './markdown/parser';
-import { LocalImageManager, LocalFile } from './markdown/local-file';
-import { CardDataManager } from './markdown/code';
 import { ArticleRender } from './article-render';
 
 
@@ -40,29 +37,17 @@ export class NotePreview extends ItemView {
     renderDiv: HTMLDivElement;
     articleDiv: HTMLDivElement;
     styleEl: HTMLElement;
-    coverEl: HTMLInputElement;
-    useDefaultCover: HTMLInputElement;
-    useLocalCover: HTMLInputElement;
-    msgView: HTMLDivElement;
-    wechatSelect: HTMLSelectElement;
     themeSelect: HTMLSelectElement;
     highlightSelect: HTMLSelectElement;
     listeners?: EventRef[];
     container: Element;
     settings: NMPSettings;
     assetsManager: AssetsManager;
-    articleHTML: string;
     title: string;
     currentFile?: TFile;
     currentTheme: string;
     currentHighlight: string;
-    currentAppId: string;
-    markedParser: MarkedParser;
-    cachedElements: Map<string, string> = new Map();
     _articleRender: ArticleRender | null = null;
-    isCancelUpload: boolean = false;
-    isBatchRuning: boolean = false;
-
 
     constructor(leaf: WorkspaceLeaf, plugin: Plugin) {
         super(leaf);
@@ -121,7 +106,7 @@ export class NotePreview extends ItemView {
                 if (this.currentFile?.path == file.path) {
                     this.renderMarkdown();
                 }
-            } ) 
+            })
         ];
 
         this.renderMarkdown();
@@ -129,120 +114,20 @@ export class NotePreview extends ItemView {
 
     async onClose() {
         this.listeners?.forEach(listener => this.workspace.offref(listener));
-        LocalFile.fileCache.clear();
         uevent('close');
     }
 
-    onAppIdChanged() {
-        // 清理上传过的图片
-        this.cleanArticleData();
-    }
-
     async update() {
-        if (this.isBatchRuning) {
-            return;
-        }
-        this.cleanArticleData();
         this.renderMarkdown();
-    }
-
-    cleanArticleData() {
-        LocalImageManager.getInstance().cleanup();
-        CardDataManager.getInstance().cleanup();
-    }
-
-    buildMsgView(parent: HTMLDivElement) {
-        this.msgView = parent.createDiv({ cls: 'msg-view' });
-        const title = this.msgView.createDiv({ cls: 'msg-title' });
-        title.id = 'msg-title';
-        title.innerText = '加载中...';
-        const okBtn = this.msgView.createEl('button', { cls: 'msg-ok-btn' }, async (button) => {
-            
-        });
-        okBtn.id = 'msg-ok-btn';
-        okBtn.innerText = '确定';
-        okBtn.onclick = async () => {
-            this.msgView.setAttr('style', 'display: none;');
-        }
-        const cancelBtn = this.msgView.createEl('button', { cls: 'msg-ok-btn' }, async (button) => {
-        });
-        cancelBtn.id = 'msg-cancel-btn';
-        cancelBtn.innerText = '取消';
-        cancelBtn.onclick = async () => {
-            this.isCancelUpload = true;
-            this.msgView.setAttr('style', 'display: none;');
-        }
-    }
-
-    showLoading(msg: string, cancelable: boolean = false) {
-        const title = this.msgView.querySelector('#msg-title') as HTMLElement;
-        title!.innerText = msg;
-        const btn = this.msgView.querySelector('#msg-ok-btn') as HTMLElement;
-        btn.setAttr('style', 'display: none;');
-        this.msgView.setAttr('style', 'display: flex;');
-        const cancelBtn = this.msgView.querySelector('#msg-cancel-btn') as HTMLElement;
-        cancelBtn.setAttr('style', cancelable ? 'display: block;': 'display: none;');
-        this.msgView.setAttr('style', 'display: flex;');
-    }
-
-    showMsg(msg: string) {
-        const title = this.msgView.querySelector('#msg-title') as HTMLElement;
-        title!.innerText = msg;
-        const btn = this.msgView.querySelector('#msg-ok-btn') as HTMLElement;
-        btn.setAttr('style', 'display: block;');
-        this.msgView.setAttr('style', 'display: flex;');
-        const cancelBtn = this.msgView.querySelector('#msg-cancel-btn') as HTMLElement;
-        cancelBtn.setAttr('style', 'display: none;');
-        this.msgView.setAttr('style', 'display: flex;');
     }
 
     buildToolbar(parent: HTMLDivElement) {
         this.toolbar = parent.createDiv({ cls: 'preview-toolbar' });
         let lineDiv;
 
-        // 公众号
-        if (this.settings.wxInfo.length > 1 || Platform.isDesktop) {
-            lineDiv = this.toolbar.createDiv({ cls: 'toolbar-line' });
-            lineDiv.createDiv({ cls: 'style-label' }).innerText = '公众号:';
-            const wxSelect = lineDiv.createEl('select', { cls: 'style-select' })
-            wxSelect.setAttr('style', 'width: 200px');
-            wxSelect.onchange = async () => {
-                this.currentAppId = wxSelect.value;
-                this.onAppIdChanged();
-            }
-            const defautlOp =wxSelect.createEl('option');
-            defautlOp.value = '';
-            defautlOp.text = '请在设置里配置公众号';
-            for (let i = 0; i < this.settings.wxInfo.length; i++) {
-                const op = wxSelect.createEl('option');
-                const wx = this.settings.wxInfo[i];
-                op.value = wx.appid;
-                op.text = wx.name;
-                if (i== 0) {
-                    op.selected = true
-                    this.currentAppId = wx.appid;
-                }
-            }
-            this.wechatSelect = wxSelect;
-
-            if (Platform.isDesktop) {
-                const openBtn = lineDiv.createEl('button', { cls: 'refresh-button' }, async (button) => {
-                    button.setText('去公众号后台');
-                })
-
-                openBtn.onclick = async () => {
-                    const { shell } = require('electron');
-                    shell.openExternal('https://mp.weixin.qq.com')
-                    uevent('open-mp');
-                }
-            }
-        }
-        else if (this.settings.wxInfo.length > 0) {
-            this.currentAppId = this.settings.wxInfo[0].appid;
-        }
-
-        // 复制，刷新，带图片复制，发草稿箱
+        // 复制、刷新
         lineDiv = this.toolbar.createDiv({ cls: 'toolbar-line' });
+
         const refreshBtn = lineDiv.createEl('button', { cls: 'refresh-button' }, async (button) => {
             button.setText('刷新');
         })
@@ -254,6 +139,7 @@ export class NotePreview extends ItemView {
             await this.renderMarkdown();
             uevent('refresh');
         }
+
         if (Platform.isDesktop) {
             const copyBtn = lineDiv.createEl('button', { cls: 'copy-button' }, async (button) => {
                 button.setText('复制');
@@ -269,36 +155,7 @@ export class NotePreview extends ItemView {
                     new Notice('复制失败: ' + error);
                 }
             }
-        }
 
-        const uploadImgBtn = lineDiv.createEl('button', { cls: 'copy-button' }, async (button) => {
-            button.setText('上传图片');
-        })
-
-        uploadImgBtn.onclick = async() => {
-            await this.uploadImages();
-            uevent('upload');
-        }
-
-        const postBtn = lineDiv.createEl('button', { cls: 'copy-button' }, async (button) => {
-            button.setText('发草稿');
-        })
-
-        postBtn.onclick = async() => {
-            await this.postArticle();
-            uevent('pub');
-        }
-
-        const imagesBtn = lineDiv.createEl('button', { cls: 'copy-button' }, async (button) => {
-            button.setText('图片/文字');
-        })
-
-        imagesBtn.onclick = async() => {
-            await this.postImages();
-            uevent('pub-images');
-        }
-
-        if (Platform.isDesktop && this.settings.isAuthKeyVaild()) {
             const htmlBtn = lineDiv.createEl('button', { cls: 'copy-button' }, async (button) => {
                 button.setText('导出HTML');
             })
@@ -309,60 +166,9 @@ export class NotePreview extends ItemView {
             }
         }
 
-
-        // 封面
-        lineDiv = this.toolbar.createDiv({ cls: 'toolbar-line' }); 
-
-        const coverTitle = lineDiv.createDiv({ cls: 'style-label' });
-        coverTitle.innerText = '封面:';
-
-        this.useDefaultCover = lineDiv.createEl('input', { cls: 'input-style' });
-        this.useDefaultCover.setAttr('type', 'radio');
-        this.useDefaultCover.setAttr('name', 'cover');
-        this.useDefaultCover.setAttr('value', 'default');
-        this.useDefaultCover.setAttr('checked', true);
-        this.useDefaultCover.id = 'default-cover';
-        this.useDefaultCover.onchange = async () => {
-            if (this.useDefaultCover.checked) {
-                this.coverEl.setAttr('style', 'visibility:hidden;width:0px;');
-            }
-            else {
-                this.coverEl.setAttr('style', 'visibility:visible;width:180px;');
-            }
-        }
-        const defaultLable = lineDiv.createEl('label');
-        defaultLable.innerText = '默认';
-        defaultLable.setAttr('for', 'default-cover');
-
-        this.useLocalCover = lineDiv.createEl('input', { cls: 'input-style' });
-        this.useLocalCover.setAttr('type', 'radio');
-        this.useLocalCover.setAttr('name', 'cover');
-        this.useLocalCover.setAttr('value', 'local');
-        this.useLocalCover.id = 'local-cover';
-        this.useLocalCover.setAttr('style', 'margin-left:20px;');
-        this.useLocalCover.onchange = async () => {
-            if (this.useLocalCover.checked) {
-                this.coverEl.setAttr('style', 'visibility:visible;width:180px;');
-            }
-            else {
-                this.coverEl.setAttr('style', 'visibility:hidden;width:0px;');
-            }
-        }
-
-        const localLabel = lineDiv.createEl('label');
-        localLabel.setAttr('for', 'local-cover');
-        localLabel.innerText = '上传';
-
-        this.coverEl = lineDiv.createEl('input', { cls: 'upload-input' });
-        this.coverEl.setAttr('type', 'file');
-        this.coverEl.setAttr('placeholder', '封面图片');
-        this.coverEl.setAttr('accept', '.png, .jpg, .jpeg');
-        this.coverEl.setAttr('name', 'cover');
-        this.coverEl.id = 'cover-input';
-
         // 样式
         if (this.settings.showStyleUI) {
-            lineDiv = this.toolbar.createDiv({ cls: 'toolbar-line' }); 
+            lineDiv = this.toolbar.createDiv({ cls: 'toolbar-line' });
             const cssStyle = lineDiv.createDiv({ cls: 'style-label' });
             cssStyle.innerText = '样式:';
 
@@ -405,8 +211,6 @@ export class NotePreview extends ItemView {
 
             this.highlightSelect = highlightStyleBtn;
         }
-
-        this.buildMsgView(this.toolbar);
     }
 
     async buildUI() {
@@ -442,16 +246,10 @@ export class NotePreview extends ItemView {
         this.currentFile = af;
         await this.render.renderMarkdown(af);
         const metadata = this.render.getMetadata();
-        if (metadata.appid) {
-            this.wechatSelect.value = metadata.appid;
-        }
-        else {
-            this.wechatSelect.value = this.currentAppId;
-        }
 
         if (metadata.theme) {
             this.assetsManager.themes.forEach(theme => {
-                if (theme.name === metadata.theme) { 
+                if (theme.name === metadata.theme) {
                     this.themeSelect.value = theme.className;
                 }
             });
@@ -468,93 +266,13 @@ export class NotePreview extends ItemView {
         }
     }
 
-    async uploadImages() {
-        this.showLoading('图片上传中...');
-        try {
-            await this.render.uploadImages(this.currentAppId);
-            this.showMsg('图片上传成功，并且文章内容已复制，请到公众号编辑器粘贴。');
-        } catch (error) {
-            this.showMsg('图片上传失败: ' + error.message);
-        }
-    }
-
-    async postArticle() {
-        let localCover = null;
-        if (this.useLocalCover.checked) {
-            const fileInput = this.coverEl;
-            if (!fileInput.files || fileInput.files.length === 0) {
-                this.showMsg('请选择封面文件');
-                return;
-            }
-            localCover = fileInput.files[0];
-            if (!localCover) {
-                this.showMsg('请选择封面文件');
-                return;
-            }
-        }
-        this.showLoading('发布中...');
-        try {
-            await this.render.postArticle(this.currentAppId, localCover);
-            this.showMsg('发布成功');
-        }
-        catch (error) {
-            this.showMsg('发布失败: ' + error.message);
-        }
-    }
-
-    async postImages() {
-        this.showLoading('发布图片中...');
-        try {
-            await this.render.postImages(this.currentAppId);
-            this.showMsg('图片发布成功');
-        } catch (error) {
-            this.showMsg('图片发布失败: ' + error.message);
-        }
-    }
-
     async exportHTML() {
-        this.showLoading('导出HTML中...');
         try {
             await this.render.exportHTML();
-            this.showMsg('HTML导出成功');
+            new Notice('HTML导出成功');
         } catch (error) {
-            this.showMsg('HTML导出失败: ' + error.message);
-        }
-    }
-
-    async batchPost(folder: TFolder) {
-        const files = folder.children.filter((child: TAbstractFile) => child.path.toLocaleLowerCase().endsWith('.md'));
-        if (!files) {
-            new Notice('没有可渲染的笔记或文件不支持渲染');
-            return;
-        }
-
-        this.isCancelUpload = false;
-        this.isBatchRuning = true;
-
-        try {
-            for (let file of files) {
-                this.showLoading(`即将发布: ${file.name}`, true);
-                await sleep(5000);
-                if (this.isCancelUpload) {
-                    break;
-                }
-                this.cleanArticleData();
-                await this.renderMarkdown(file as TFile);
-                await this.postArticle();
-            }
-
-            if (!this.isCancelUpload) {
-                this.showMsg(`批量发布完成：成功发布 ${files.length} 篇笔记`);
-            }
-        }
-        catch (e) {
-            console.error(e);
-            new Notice('批量发布失败: ' + e.message);
-        }
-        finally {
-            this.isBatchRuning = false;
-            this.isCancelUpload = false;
+            console.error(error);
+            new Notice('HTML导出失败: ' + error);
         }
     }
 }

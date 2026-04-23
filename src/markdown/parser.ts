@@ -31,7 +31,6 @@ import { EmbedBlockMark } from "./embed-block-mark";
 import { SVGIcon } from "./icons";
 import { LinkRenderer } from "./link";
 import { LocalFile, LocalImageManager } from "./local-file";
-import { MathRenderer } from "./math";
 import { TextHighlight } from "./text-highlight";
 import { Comment } from "./commnet";
 import { Topic } from "./topic";
@@ -285,9 +284,6 @@ export class MarkedParser {
 		this.extensions.push(new FootnoteRenderer(app, settings, assetsManager, callback));
 		if (settings.enableEmptyLine) {
 			this.extensions.push(new EmptyLineRenderer(app, settings, assetsManager, callback));
-		}
-		if (settings.isAuthKeyVaild()) {
-			this.extensions.push(new MathRenderer(app, settings, assetsManager, callback));
 		}
 		this.extensions.push(new RemoteSvgInline(app, settings, assetsManager, callback));
 	}

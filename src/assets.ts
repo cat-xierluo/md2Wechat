@@ -101,20 +101,37 @@ export default class AssetsManager {
 
     async loadThemes() {
         try {
-            if (!await this.app.vault.adapter.exists(this.themeCfg)) {
-                new Notice('主题资源未下载，请前往设置下载！');
-                this.themes = [this.defaultTheme];
+            // 首先加载内置默认主题
+            this.themes = [this.defaultTheme];
+
+            // 检查 themes 目录是否存在
+            if (!await this.app.vault.adapter.exists(this.themesPath)) {
+                // 目录不存在，尝试创建（用户可能还没下载主题）
                 return;
             }
-            const data = await this.app.vault.adapter.read(this.themeCfg);
-            if (data) {
-                const themes = JSON.parse(data);
-                await this.loadCSS(themes);
-                this.themes = [this.defaultTheme, ... themes];
+
+            // 扫描 themes 目录下的所有 CSS 文件
+            const files = await this.app.vault.adapter.list(this.themesPath);
+            for (const file of files.files) {
+                if (file.endsWith('.css')) {
+                    const className = file.substring(this.themesPath.length, file.length - 4); // 去掉路径和 .css
+                    try {
+                        const cssContent = await this.app.vault.adapter.read(file);
+                        this.themes.push({
+                            name: className,
+                            className: className,
+                            desc: '',
+                            author: '',
+                            css: cssContent
+                        });
+                    } catch (e) {
+                        console.warn('读取主题文件失败:', file, e);
+                    }
+                }
             }
         } catch (error) {
             console.error(error);
-            new Notice('themes.json解析失败！');
+            new Notice('加载主题失败！');
         }
     }
 

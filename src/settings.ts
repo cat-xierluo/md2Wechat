@@ -20,8 +20,6 @@
  * THE SOFTWARE.
  */
 
-import { wxKeyInfo } from './weixin-api';
-
 export class NMPSettings {
     defaultStyle: string;
     defaultHighlight: string;
@@ -29,14 +27,10 @@ export class NMPSettings {
     linkStyle: string;
     embedStyle: string;
     lineNumber: boolean;
-    authKey: string;
     useCustomCss: boolean;
     customCSSNote: string;
     expertSettingsNote: string;
-    wxInfo: {name:string, appid:string, secret:string}[];
     math: string;
-    expireat: Date | null = null;
-    isVip: boolean = false;
     baseCSS: string;
     watermark: string;
     useFigcaption: boolean;
@@ -62,8 +56,6 @@ export class NMPSettings {
         this.embedStyle = 'content';
         this.lineNumber = true;
         this.useCustomCss = false;
-        this.authKey = '';
-        this.wxInfo = [];
         this.math = 'latex';
         this.baseCSS = '';
         this.watermark = '';
@@ -90,8 +82,6 @@ export class NMPSettings {
             showStyleUI,
             lineNumber,
             defaultHighlight,
-            authKey,
-            wxInfo,
             math,
             useCustomCss,
             baseCSS,
@@ -122,12 +112,6 @@ export class NMPSettings {
         if (lineNumber !== undefined) {
             settings.lineNumber = lineNumber;
         }
-        if (authKey) {
-            settings.authKey = authKey;
-        }
-        if (wxInfo) {
-            settings.wxInfo = wxInfo;
-        }
         if (math) {
             settings.math = math;
         }
@@ -155,7 +139,6 @@ export class NMPSettings {
         if (ignoreEmptyLine !== undefined) {
             settings.enableEmptyLine = ignoreEmptyLine;
         }
-        settings.getExpiredDate();
         settings.isLoaded = true;
     }
 
@@ -168,8 +151,6 @@ export class NMPSettings {
             'linkStyle': settings.linkStyle,
             'embedStyle': settings.embedStyle,
             'lineNumber': settings.lineNumber,
-            'authKey': settings.authKey,
-            'wxInfo': settings.wxInfo,
             'math': settings.math,
             'useCustomCss': settings.useCustomCss,
             'baseCSS': settings.baseCSS,
@@ -180,24 +161,5 @@ export class NMPSettings {
             'expertSettingsNote': settings.expertSettingsNote,
             'ignoreEmptyLine': settings.enableEmptyLine,
         }
-    }
-
-    getExpiredDate() {
-        if (this.authKey.length == 0) return;
-        wxKeyInfo(this.authKey).then((res) => {
-            if (res.status == 200) {
-                if (res.json.vip) {
-                    this.isVip = true;
-                }
-                this.expireat = new Date(res.json.expireat);
-            }
-        })
-    }
-
-    isAuthKeyVaild() {
-        if (this.authKey.length == 0) return false;
-        if (this.isVip) return true;
-        if (this.expireat == null) return false;
-        return this.expireat > new Date();
     }
 }
