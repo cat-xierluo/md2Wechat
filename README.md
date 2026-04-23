@@ -1,5 +1,7 @@
 # md2Wechat
 
+> 基于 [note-to-mp](https://github.com/sunbooshi/note-to-mp) 精简的微信公众号渲染插件
+
 一个 Obsidian 插件，用于将笔记复制到微信公众号编辑器，同时保留样式。
 
 ## 功能
@@ -43,4 +45,4 @@
 
 ## 反馈
 
-问题和建议请提交 [GitHub Issue](https://github.com/cat-xierluo/note-to-mp/issues)。
+问题和建议请提交 [GitHub Issue](https://github.com/cat-xierluo/md2Wechat/issues)。
