@@ -192,11 +192,11 @@ export class ArticleRender implements MDRendererCallback {
 
   getCSS() {
     try {
-      const theme = this.assetsManager.getTheme(this.currentTheme);
-      const highlight = this.assetsManager.getHighlight(this.currentHighlight);
+      const theme = this.assetsManager.getTheme(this.currentTheme) || this.assetsManager.themes[0];
+      const highlight = this.assetsManager.getHighlight(this.currentHighlight) || this.assetsManager.highlights[0];
       const customCSS = this.settings.customCSSNote.length > 0 || this.settings.useCustomCss ? this.assetsManager.customCSS : '';
       const baseCSS = this.settings.baseCSS ? `.note-to-mp {${this.settings.baseCSS}}` : '';
-      return `${InlineCSS}\n\n${highlight!.css}\n\n${theme!.css}\n\n${baseCSS}\n\n${customCSS}`;
+      return `${InlineCSS}\n\n${highlight.css}\n\n${theme.css}\n\n${baseCSS}\n\n${customCSS}`;
     } catch (error) {
       console.error(error);
       new Notice(`获取样式失败${this.currentTheme}|${this.currentHighlight}，请检查主题是否正确安装。`);
