@@ -3,8 +3,8 @@
 	"name": "md2wechat",
 	"version": "1.4.1",
 	"minAppVersion": "1.4.5",
-	"description": "Copy notes to WeChat MP editor with preserved styles, support code highlighting and SVG rendering.",
-	"author": "Sun Booshi",
-	"authorUrl": "https://sunboshi.tech",
+	"description": "将笔记复制到微信公众号编辑器，支持代码高亮、动态SVG渲染和主题自定义。",
+	"author": "cat-xierluo",
+	"authorUrl": "https://github.com/cat-xierluo/md2wechat",
 	"isDesktopOnly": false
 }
