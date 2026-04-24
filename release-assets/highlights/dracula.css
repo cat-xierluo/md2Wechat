@@ -1,0 +1,49 @@
+/*
+Dracula style - https://draculatheme.com/
+*/
+.hljs {
+  background: #282a36;
+  color: #f8f8f2;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #6272a4;
+}
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name {
+  color: #ff79c6;
+}
+.hljs-keyword,
+.hljs-symbol,
+.hljs-type {
+  color: #8be9fd;
+}
+.hljs-number,
+.hljs-literal {
+  color: #bd93f9;
+}
+.hljs-title,
+.hljs-section {
+  color: #50fa7b;
+}
+.hljs-doctag,
+.hljs-string {
+  color: #f1fa8c;
+}
+.hljs-meta {
+  color: #ff79c6;
+}
+.hljs-deletion {
+  background: #6272a4;
+}
+.hljs-addition {
+  background: #44475a;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: bold;
+}
