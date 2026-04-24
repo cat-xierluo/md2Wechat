@@ -23,7 +23,7 @@
 import { App, PluginManifest, Notice, requestUrl, FileSystemAdapter, TAbstractFile, TFile, TFolder } from "obsidian";
 import * as zip from "@zip.js/zip.js";
 import DefaultTheme from "./default-theme";
-import DefaultHighlight from "./default-highlight";
+import { BuiltInHighlights } from "./built-in-highlights";
 import { NMPSettings } from "./settings";
 import { ExpertSettings, defaultExpertSettings, expertSettingsFromString } from "./expert-settings";
 
@@ -212,26 +212,26 @@ export default class AssetsManager {
 
     async loadHighlights() {
         try {
-            const defaultHighlight = {name: '默认', url: '', css: DefaultHighlight};
-            this.highlights = [defaultHighlight];
-            if (!await this.app.vault.adapter.exists(this.hilightCfg)) {
-                new Notice('高亮资源未下载，请前往设置下载！');
-                return;
-            }
+            // 使用内置高亮主题，不再需要下载
+            this.highlights = BuiltInHighlights.map(h => ({ name: h.name, url: '', css: h.css }));
 
-            const data = await this.app.vault.adapter.read(this.hilightCfg);
-            if (data) {
-                const items = JSON.parse(data);
-                for (const item of items) {
-                    const cssFile = this.hilightPath + item.name + '.css';
-                    const cssContent = await this.app.vault.adapter.read(cssFile);
-                    this.highlights.push({name: item.name, url: item.url, css: cssContent});
+            // 如果用户有自定义高亮主题文件，也加载它们
+            if (await this.app.vault.adapter.exists(this.hilightCfg)) {
+                const data = await this.app.vault.adapter.read(this.hilightCfg);
+                if (data) {
+                    const items = JSON.parse(data);
+                    for (const item of items) {
+                        const cssFile = this.hilightPath + item.name + '.css';
+                        if (await this.app.vault.adapter.exists(cssFile)) {
+                            const cssContent = await this.app.vault.adapter.read(cssFile);
+                            this.highlights.push({ name: item.name, url: item.url, css: cssContent });
+                        }
+                    }
                 }
             }
         }
         catch (error) {
             console.error(error);
-            new Notice('highlights.json解析失败！');
         }
     }
 
